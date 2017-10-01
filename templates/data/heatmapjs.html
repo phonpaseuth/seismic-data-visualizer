@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<link
+    href="http://cdn.pydata.org/bokeh/release/bokeh-0.12.0.min.css"
+    rel="stylesheet" type="text/css">
+    <link
+    href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.0.min.css"
+    rel="stylesheet" type="text/css">
+
+    <script src="http://cdn.pydata.org/bokeh/release/bokeh-0.12.0.min.js"></script>
+    <script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.0.min.js"></script>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Experiment with Bokeh</title>
+</head>
+
+<body>
+{{ the_div|safe }}
+
+{{ the_script|safe }}
+</body>
+
+<body>
+{{ the_div2|safe }}
+
+{{ the_script2|safe }}
+</body>
+
+<body>
+{{ the_div3|safe }}
+
+{{ the_script3|safe }}
+</body>
+
+<head>
+    <meta charset="utf-8">
+    <title>Legend Example (DOM Legends) | heatmap.js</title>
+    <style>
+        body, html, h2 {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        body {
+            font-family: sans-serif;
+        }
+
+        body * {
+            font-weight: 200;
+        }
+
+        #heatmapContainerWrapper {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background: rgba(0, 0, 0, .1);
+        }
+
+        #heatmapContainer {
+            width: 100%;
+            height: 100%;
+        }
+
+        #heatmapLegend {
+            background: white;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            padding: 10px;
+        }
+
+        .tooltip {
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: rgba(0, 0, 0, .8);
+            color: white;
+            font-size: 14px;
+            padding: 5px;
+            line-height: 18px;
+            display: none;
+        }
+
+        #min {
+            float: left;
+        }
+
+        #max {
+            float: right;
+        }
+
+        h1 {
+            position: absolute;
+            background: black;
+            color: white;
+            padding: 10px;
+            font-weight: 200;
+        }
+
+        #all-examples-info {
+            position: absolute;
+            background: white;
+            font-size: 16px;
+            padding: 20px;
+            top: 100px;
+            width: 350px;
+            line-height: 150%;
+            border: 1px solid rgba(0, 0, 0, .2);
+        }
+    </style>
+</head>
+
+<body>
+<div id="heatmapContainerWrapper">
+    <div id="heatmapContainer">
+    </div>
+
+    <div id="heatmapLegend">
+        <h2>Descriptive Legend Title</h2>
+        <span id="min"></span>
+        <span id="max"></span>
+        <img id="gradient" src="" style="width:100%"/>
+    </div>
+    <div class="tooltip"></div>
+</div>
+
+{% load staticfiles %}
+<script src="{% static  "js/heatmap.min.js" %}"></script>
+<script>
+    window.onload = function () {
+        // helper function
+        function $(id) {
+            return document.getElementById(id);
+        };
+
+
+        function Get(yourUrl) {
+            var Httpreq = new XMLHttpRequest(); // a new request
+            Httpreq.open("GET", yourUrl, false);
+            Httpreq.send(null);
+            return Httpreq.responseText;
+        }
+
+        var json_data = JSON.parse(Get("{% url 'api:data' id dim num%}"));
+        console.log("this is the author name: " + json_data.data[1][2]);
+
+        /*  legend code */
+        // we want to display the gradient, so we have to draw it
+        var legendCanvas = document.createElement('canvas');
+        legendCanvas.width = 100;
+        legendCanvas.height = 10;
+
+        var legendCtx = legendCanvas.getContext('2d');
+        var gradientCfg = {};
+
+        function updateLegend(data) {
+            // the onExtremaChange callback gives us min, max, and the gradientConfig
+            // so we can update the legend
+            $('min').innerHTML = data.min.toFixed(2);
+            $('max').innerHTML = data.max.toFixed(2);
+            // regenerate gradient image
+            if (data.gradient != gradientCfg) {
+                gradientCfg = data.gradient;
+                var gradient = legendCtx.createLinearGradient(0, 0, 100, 1);
+                for (var key in gradientCfg) {
+                    gradient.addColorStop(key, gradientCfg[key]);
+                }
+
+                legendCtx.fillStyle = gradient;
+                legendCtx.fillRect(0, 0, 100, 10);
+                $('gradient').src = legendCanvas.toDataURL();
+            }
+        };
+        /* legend code end */
+
+
+        // create a heatmap instance
+        var heatmap = h337.create({
+            container: document.getElementById('heatmapContainer'),
+            maxOpacity: .5,
+            radius: 10,
+            blur: .75,
+            // update the legend whenever there's an extrema change
+            onExtremaChange: function onExtremaChange(data) {
+                updateLegend(data);
+            }
+        });
+
+        var radius = 4;
+        // boundaries for data generation
+        var width = json_data.I * radius; //(+window.getComputedStyle(document.body).width.replace(/px/,''));
+        var height = json_data.J * radius; //(+window.getComputedStyle(document.body).height.replace(/px/,''));
+        var max = -65555;
+        var min = 65555;
+
+        // generate 1000 datapoints
+        var generate = function () {
+            // randomly generate extremas
+
+            var t = [];
+            var I = json_data.I;
+            var J = json_data.J;
+
+            for (var i = 0; i < I; i++)
+                for (var j = 0; j < J; j++) {
+                    var x = i * radius;
+                    var y = j * radius;
+                    var c = (json_data.data[i][j]);
+                    if (max < c)
+                        max = c;
+                    if (min > c)
+                        min = c
+                    // btw, we can set a radius on a point basis
+                    var r = radius;
+                    // add to dataset
+                    t.push({x: x, y: y, value: c, radius: r});
+                    //if(i==0)
+                    //     console.log(x,y,c);
+                }
+            var init = +new Date;
+            // set the generated dataset
+            heatmap.setData({
+                min: min,
+                max: max,
+                data: t
+            });
+            //console.log('took ', (+new Date) - init, 'ms');
+        };
+        // initial generate
+        generate();
+        console.log(max, min)
+
+        // whenever a user clicks on the ContainerWrapper the data will be regenerated -> new max & min
+        document.getElementById('heatmapContainerWrapper').onclick = function () {
+            generate();
+        };
+
+        var demoWrapper = document.getElementById('heatmapContainerWrapper');
+        var tooltip = document.querySelector('.tooltip');
+
+        function updateTooltip(x, y, value) {
+            // + 15 for distance to cursor
+            var transform = 'translate(' + (x + 15) + 'px, ' + (y + 15) + 'px)';
+            tooltip.style.MozTransform = transform;
+            /* Firefox */
+            tooltip.style.msTransform = transform;
+            /* IE (9+) - note ms is lowercase */
+            tooltip.style.OTransform = transform;
+            /* Opera */
+            tooltip.style.WebkitTransform = transform;
+            /* Safari and Chrome */
+            tooltip.style.transform = transform;
+            /* One day, my pretty */
+            tooltip.innerHTML = value.toString();
+        }
+
+        demoWrapper.onmousemove = function (ev) {
+            var x = Math.round(ev.layerX / radius) * radius;
+            var y = Math.round(ev.layerY / radius) * radius;
+            var value = heatmap.getValueAt({
+                x: x,
+                y: y
+            });
+
+            tooltip.style.display = 'block';
+
+            updateTooltip(x, y, value);
+            //  console.log(x,y,value);
+
+        };
+        demoWrapper.onmouseout = function () {
+            tooltip.style.display = 'none';
+        };
+
+
+    };
+</script>
+</body>
+</html>

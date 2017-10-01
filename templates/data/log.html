@@ -1,0 +1,6 @@
+<h1>Log</h1>
+<ul>
+{% for l in log_list.all %}
+    <li>Data_id: {{ l.data_id  }} Date:  {{l.access_date}} Action: {{ l.action}} User: {{l.user_id}} Command: {{l.command}}</li>
+{% endfor %}
+</ul>
